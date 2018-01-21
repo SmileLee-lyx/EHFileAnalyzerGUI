@@ -17,3 +17,6 @@
 - 优化使用说明及用户体验
 - 提供批量修改功能
 - 提供版本移植功能
+
+### Event Horizon
+[Tap Tap][https://www.taptap.com/app/18466]
