@@ -1,3 +1,5 @@
+@file:Suppress("unused")
+
 package org.smilelee.eventhorizonfileanalyzer
 
 import com.google.gson.Gson
@@ -17,6 +19,7 @@ import org.smilelee.kotson.registerTypeAdapter
 import java.io.File
 import kotlin.math.max
 
+@Suppress("NOTHING_TO_INLINE")
 inline fun String.toByteList() = toByteArray().asList()
 
 object EHFileParser {
@@ -109,6 +112,8 @@ val Data.values: List<Data.EHDataFile>
             technologyMap.values +
             shipBuilderSettings
 
+fun Data.buildDatabase(path: File) = buildDatabase(path.toString() + "\\")
+
 fun Data.buildDatabase(path: String) {
     File(path).let {
         if (!it.exists())
@@ -124,25 +129,6 @@ fun Data.buildDatabase(path: String) {
         File(ehDataFile.databaseFileName(path)).let { databaseFile ->
             if (!databaseFile.exists()) databaseFile.createNewFile()
             databaseFile.writeText(ehDataFile.content)
-        }
-    }
-}
-
-fun Data.classify(path: String) {
-    File(path).let {
-        if (!it.exists())
-            it.mkdir()
-    }
-    dirNames.values.forEach {
-        File(path + it).let {
-            if (!it.exists())
-                it.mkdir()
-        }
-    }
-    values.forEach { ehDataFile ->
-        File(path + dirNames[ehDataFile.itemType] + ehDataFile.fileName).let { databaseFile ->
-            if (!databaseFile.exists()) databaseFile.createNewFile()
-            databaseFile.writeBytes(ehDataFile.rawContent)
         }
     }
 }
@@ -190,7 +176,6 @@ object VersionTranslator {
                     }
                 }.print { it.name }
             }
-            
         }
     }
 }
@@ -239,19 +224,6 @@ object VersionComparator {
                 .forEach { file -> result.add(Difference.deletedFile(file)) }
         return result
     }
-    
-    fun compare0(pathEvent: File, pathMod: File, pathDifference: File) {
-        if (!pathDifference.exists()) pathDifference.mkdir()
-        pathDifference.listFiles().forEach { it.delete() }
-        pathMod.listFiles().forEach {
-            if (EHFileParser.getJson(it) != EHFileParser.getJson(EHFileParser.fileFromName(pathEvent, it.name))) {
-                it.copyTo(EHFileParser.fileFromName(pathDifference, it.name), true)
-                println(it.name + " " + EHFileParser.defaultJsonParser.parse(EHFileParser.getJson(it)).let {
-                    it["ItemType"].int.toString() + " " + it["Id"]
-                })
-            }
-        }
-    }
 }
 
 inline fun <T, R> Iterable<T>.print(transform: (T) -> R) = forEach { println(transform(it)) }
@@ -267,37 +239,40 @@ object StringFormat {
 object EHFileContentEditor {
     fun editLength(b: ByteArray) = editLength(b, b.size)
     
+    /**
+     * @param b 字节数组
+     * @param i 字节数组偏移量
+     * @param e true -> big endian, false -> little endian
+     * @param l 长度
+     * @return c 整型值
+     */
+    fun readInt(b: ByteArray, i: Int, e: Boolean = false, l: Int = 4) =
+            (0 until l).sumBy { j -> b[i + j].toInt() shl (8 * if (e) l - 1 - j else j) }
+    
+    fun writeInt(b: ByteArray, i: Int, c: Int, e: Boolean = false, l: Int = 4) {
+        (0 until l).forEach { j ->
+            b[i + j] = (c ushr (8 * if (e) l - 1 - j else j) and 0xff).toByte()
+        }
+    }
+    
+    fun nonNullSize(b: ByteArray, i: Int): Int {
+        var l = 0
+        while (b[i + l] != 0.toByte()) ++l
+        return l
+    }
+    
+    infix fun Int.alignTo(i: Int) = (this + i - 1) / i * i
+    
     fun editLength(b: ByteArray, fl: Int) = b.also {
         val fli = 4
-        val vi = 8
-        val v = (b[vi + 3].toInt() shl 0x00) or
-                (b[vi + 2].toInt() shl 0x08) or
-                (b[vi + 1].toInt() shl 0x10) or
-                (b[vi + 0].toInt() shl 0x18)
-        val oli = when (v) {
-            15 -> 76
-            17 -> 80
-            else -> 0
-        }
+        val oli = (67 + nonNullSize(b, 20)) alignTo 4
         val ol = fl - 4096
-        val anl = (b[4096].toInt() shl 0x00) or
-                (b[4097].toInt() shl 0x08) or
-                (b[4098].toInt() shl 0x10) or
-                (b[4099].toInt() shl 0x18)
-        val jli = 4103 + anl - (anl + 3) % 4
+        val anl = readInt(b, 4096)
+        val jli = 4096 + 4 + anl alignTo 4
         val jl = fl - jli - 4
-        b[fli + 3] = (fl ushr 0x00 and 0xff).toByte()
-        b[fli + 2] = (fl ushr 0x08 and 0xff).toByte()
-        b[fli + 1] = (fl ushr 0x10 and 0xff).toByte()
-        b[fli + 0] = (fl ushr 0x18 and 0xff).toByte()
-        b[oli + 0] = (ol ushr 0x00 and 0xff).toByte()
-        b[oli + 1] = (ol ushr 0x08 and 0xff).toByte()
-        b[oli + 2] = (ol ushr 0x10 and 0xff).toByte()
-        b[oli + 3] = (ol ushr 0x18 and 0xff).toByte()
-        b[jli + 0] = (jl ushr 0x00 and 0xff).toByte()
-        b[jli + 1] = (jl ushr 0x08 and 0xff).toByte()
-        b[jli + 2] = (jl ushr 0x10 and 0xff).toByte()
-        b[jli + 3] = (jl ushr 0x18 and 0xff).toByte()
+        writeInt(b, fli, fl, true)
+        writeInt(b, oli, ol)
+        writeInt(b, jli, jl)
     }
     
     fun editLength(header: List<Byte>, json: String) = editLength(

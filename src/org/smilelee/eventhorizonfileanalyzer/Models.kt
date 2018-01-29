@@ -51,7 +51,9 @@ class Data {
         NEGANARI("Neganari  "),
         DAAZEN("Daazen    "),
         UNKNOWNS("Unknowns  "),
-        THE_EMPIRE("The Empire");
+        THE_EMPIRE("The Empire"),
+        THE_SWARM("The Swarm "),
+        ;
         
         companion object {
             fun factionFromId(id: Int) = when (id) {
@@ -67,6 +69,7 @@ class Data {
                 9     -> DAAZEN
                 10    -> UNKNOWNS
                 11    -> THE_EMPIRE
+                12    -> THE_SWARM
                 else  -> throw IllegalArgumentException()
             }
         }
@@ -81,7 +84,10 @@ class Data {
         abstract val itemType: Int
         abstract val id: Int
         
-        abstract fun databaseFileName(path: String): String
+        fun databaseFileName(path: String) =
+                "$path${dirNames[itemType]}${id}_${databaseRawFileName()}.json"
+        
+        abstract fun databaseRawFileName(): String
         
         lateinit var data: Data
         
@@ -90,6 +96,25 @@ class Data {
         open fun addToData(data: Data) {
             this.data = data
         }
+    }
+    
+    val fileMapFromItemType: Map<Int, Map<Int, EHDataFile>> by lazy {
+        mapOf(
+                1 to components,
+                2 to devices,
+                3 to weapons,
+                4 to ammunition,
+                5 to droneBays,
+                6 to ships,
+                7 to satellites,
+                8 to shipBuilds,
+                9 to satelliteBuilds,
+                10 to technology,
+                11 to componentStats,
+                12 to componentModifications,
+                13 to technologyMap,
+                100 to mapOf(0 to shipBuilderSettings)
+        )
     }
     
     object ItemType {
@@ -134,7 +159,7 @@ class Data {
         val isDroneBay get() = droneBayId != -1
         val isWeapon get() = weaponId != -1
         
-        override fun databaseFileName(path: String) = "$path${dirNames[itemType]}$name.json"
+        override fun databaseRawFileName() = name
         
         override fun addToData(data: Data) {
             super.addToData(data)
@@ -162,7 +187,7 @@ class Data {
     ) : EHDataFile() {
         override fun toString() = "$fileName Device[${formatTo(id, 3)}]"
         
-        override fun databaseFileName(path: String) = "$path${dirNames[itemType]}Device$id.json"
+        override fun databaseRawFileName() = "Device"
         
         override fun addToData(data: Data) {
             super.addToData(data)
@@ -200,7 +225,7 @@ class Data {
                         }
                     }
         
-        override fun databaseFileName(path: String) = "$path${dirNames[itemType]}$name.json"
+        override fun databaseRawFileName() = name
         
         override fun addToData(data: Data) {
             super.addToData(data)
@@ -245,7 +270,7 @@ class Data {
                         }
                     }
         
-        override fun databaseFileName(path: String) = "$path${dirNames[itemType]}$name.json"
+        override fun databaseRawFileName() = name
         
         override fun addToData(data: Data) {
             super.addToData(data)
@@ -263,7 +288,7 @@ class Data {
     ) : EHDataFile() {
         override fun toString() = "$fileName DroneBay[${formatTo(id, 3)}]"
         
-        override fun databaseFileName(path: String) = "$path${dirNames[itemType]}DroneBay$id.json"
+        override fun databaseRawFileName() = "DroneBay"
         
         override fun addToData(data: Data) {
             super.addToData(data)
@@ -293,7 +318,7 @@ class Data {
         override fun toString() = "$fileName Ship[${formatTo(id, 3)}] " +
                 "from ${Faction.factionFromId(factionId).factionName}: $name"
         
-        override fun databaseFileName(path: String) = "$path${dirNames[itemType]}$name.json"
+        override fun databaseRawFileName() = name
         
         override fun addToData(data: Data) {
             super.addToData(data)
@@ -310,7 +335,7 @@ class Data {
     ) : EHDataFile() {
         override fun toString() = "$fileName Satellite[${formatTo(id, 3)}]: $name"
         
-        override fun databaseFileName(path: String) = "$path${dirNames[itemType]}$name.json"
+        override fun databaseRawFileName() = name
         
         override fun addToData(data: Data) {
             super.addToData(data)
@@ -346,7 +371,7 @@ class Data {
         
         override fun toString() = "$fileName ShipBuild[${formatTo(id, 3)}] level $difficultyClass of $shipName"
         
-        override fun databaseFileName(path: String) = "$path${dirNames[itemType]}${shipName}_$difficultyClass.json"
+        override fun databaseRawFileName() = "${shipName}_$difficultyClass"
         
         override fun addToData(data: Data) {
             super.addToData(data)
@@ -369,7 +394,7 @@ class Data {
         override fun toString() = "$fileName SatelliteBuild[${formatTo(id, 3)}] level $difficultyClass " +
                 "of $satelliteName"
         
-        override fun databaseFileName(path: String) = "$path${dirNames[itemType]}${satelliteName}_$difficultyClass.json"
+        override fun databaseRawFileName() = "${satelliteName}_$difficultyClass"
         
         override fun addToData(data: Data) {
             super.addToData(data)
@@ -381,7 +406,7 @@ class Data {
             @Expose @SerializedName("ItemType") override val itemType: Int = ItemType.TECHNOLOGY,
             @Expose @SerializedName("Id") override val id: Int = 0,
             @Expose @SerializedName("Type") val type: Int = 0,
-            @Expose @SerializedName("ItemId") val itemId: Int = -1,
+            @Expose @SerializedName("ItemId") val itemId: Int = 0,
             @Expose @SerializedName("Faction") val factionId: Int = -1,
             @Expose @SerializedName("Price") val price: Int = 0,
             @Expose @SerializedName("Hidden") val hidden: Boolean = false,
@@ -399,7 +424,7 @@ class Data {
                 else -> null
             } ?: ""
         
-        override fun databaseFileName(path: String) = "$path${dirNames[itemType]}$name.json"
+        override fun databaseRawFileName() = name
         
         override fun addToData(data: Data) {
             super.addToData(data)
@@ -449,7 +474,7 @@ class Data {
                         }
                     }
         
-        override fun databaseFileName(path: String) = "$path${dirNames[itemType]}$name.json"
+        override fun databaseRawFileName() = name
         
         override fun addToData(data: Data) {
             super.addToData(data)
@@ -464,7 +489,7 @@ class Data {
     ) : EHDataFile() {
         override fun toString() = "$fileName ComponentModification[${formatTo(id, 3)}]"
         
-        override fun databaseFileName(path: String) = "$path${dirNames[itemType]}Modification$id.json"
+        override fun databaseRawFileName() = "Modification"
         
         override fun addToData(data: Data) {
             super.addToData(data)
@@ -500,7 +525,7 @@ class Data {
                 else -> null
             } ?: ""
         
-        override fun databaseFileName(path: String) = "$path${dirNames[itemType]}$name.json"
+        override fun databaseRawFileName() = name
         
         override fun addToData(data: Data) {
             super.addToData(data)
@@ -523,9 +548,9 @@ class Data {
     ) : EHDataFile() {
         override fun toString() = "$fileName ShipBuilderSettings"
         
-        override fun databaseFileName(path: String) = "$path${dirNames[itemType]}ShipBuilderSettings.json"
+        override fun databaseRawFileName() = "ShipBuilderSettings"
         
-        override val id get() = -1
+        override val id get() = 0
         
         override fun addToData(data: Data) {
             super.addToData(data)

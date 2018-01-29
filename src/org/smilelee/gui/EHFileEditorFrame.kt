@@ -51,15 +51,7 @@ class EHFileEditorFrame : JFrame("EH 文件编辑器") {
         selectPathButton.addActionListener { path = getSelectedPath() }
         this.add(selectPathButton)
         
-        isVisible = true
-    }
-    
-    private fun getSelectedPath(): File? {
-        val fileChooser = JFileChooser()
-        fileChooser.fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
-        fileChooser.setFontForAll(defaultFont)
-        fileChooser.showDialog(this, "请选择目录")
-        return fileChooser.selectedFile
+        this.isVisible = true
     }
     
     private fun showEditor(path: File?) {
@@ -117,7 +109,7 @@ class EHFileEditorFrame : JFrame("EH 文件编辑器") {
                 }
         selectPathButton.isVisible = false
         val data = EHFileParser.parseData(path)
-        data.values.forEach {
+        data.values.sortedBy { it.id }.forEach {
             children[it.itemType]!!.add(DefaultMutableTreeNode(FileSelected(it.name, it.file, it.itemType)))
         }
         val fileSelector = JTree(root)
@@ -132,6 +124,7 @@ class EHFileEditorFrame : JFrame("EH 文件编辑器") {
             val jsonString = EHFileParser.getJson(selected.file)
             editor.text = jsonString
             originText = jsonString
+            hint.text = selected.file.name
             shipBuilderButton.isVisible = selected.itemType == Data.ItemType.SHIP ||
                     selected.itemType == Data.ItemType.SATELLITE
         }
@@ -176,13 +169,14 @@ class EHFileEditorFrame : JFrame("EH 文件编辑器") {
         return true
     }
     
-    fun contentWithFont(content: String) = JLabel(content).also { it.font = defaultFont }
-    
     data class FileSelected(val name: String, val file: File, val itemType: Int) {
         override fun toString() = name
     }
     
     companion object {
-        val defaultFont = Font("Microsoft YaHei (UI)", Font.PLAIN, 12)
+        @JvmStatic
+        fun main(args: Array<String>) {
+            EHFileEditorFrame()
+        }
     }
 }

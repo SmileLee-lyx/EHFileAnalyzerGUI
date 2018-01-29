@@ -194,7 +194,5 @@ class ShipFrame(val editorFrame: EHFileEditorFrame, layout: String, shipName: St
                 '4' to Color(0xff4040),
                 '5' to Color(0xffc000)
         )
-        
-        val defaultFont = Font("Microsoft YaHei (UI)", Font.PLAIN, 12)
     }
 }

@@ -19,4 +19,6 @@
 - 提供版本移植功能
 
 ### Event Horizon
-[Tap Tap][https://www.taptap.com/app/18466]
+[Tap Tap][1]
+
+[1]:[https://www.taptap.com/app/18466]
